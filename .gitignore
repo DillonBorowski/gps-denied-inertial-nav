@@ -34,6 +34,7 @@ env/
 Thumbs.db
 *.swp
 .idea/
+.claude/
 
 # --- Large / local-only data ---
 # Logged datasets are tracked deliberately (small CSV/JSON summaries are fine);
