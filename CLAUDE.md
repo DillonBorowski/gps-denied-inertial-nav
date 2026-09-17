@@ -95,5 +95,9 @@ even if a shortcut looks tempting.
 
 ## Current status
 
-Phase 0 — repository scaffolding only. No firmware logic has been written
-yet.
+Phase 0 complete — repository scaffolding, PlatformIO toolchain, and
+ICM-20948 register-map study done. No firmware logic has been written yet.
+
+**Blocked on hardware.** Phase 1 (IMU bring-up) needs the ESP32-S3 Thing
+Plus and ICM-20948 physically connected (USB + Qwiic I2C) — neither is on
+hand right now. Resume Phase 1 once that hardware is available.

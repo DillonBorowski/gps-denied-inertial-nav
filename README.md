@@ -31,4 +31,8 @@ phase plan and engineering constraints.
 
 ## Status
 
-Phase 0 — repository scaffolding only. No firmware logic written yet.
+Phase 0 complete — scaffolding, toolchain, and register-map study done.
+No firmware logic written yet.
+
+**Blocked on hardware** — Phase 1 needs the ESP32-S3 and ICM-20948
+physically connected. Resume once that hardware is on hand.
