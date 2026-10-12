@@ -96,8 +96,18 @@ even if a shortcut looks tempting.
 ## Current status
 
 Phase 0 complete — repository scaffolding, PlatformIO toolchain, and
-ICM-20948 register-map study done. No firmware logic has been written yet.
+ICM-20948 register-map study done.
 
-**Blocked on hardware.** Phase 1 (IMU bring-up) needs the ESP32-S3 Thing
-Plus and ICM-20948 physically connected (USB + Qwiic I2C) — neither is on
-hand right now. Resume Phase 1 once that hardware is available.
+Phase 1 in progress. Hardware is wired (ESP32-S3 Thing Plus <-> ICM-20948
+over Qwiic I2C) and verified: bank-select mechanism, `WHO_AM_I` read
+(confirmed `0xEA`), the `PWR_MGMT_1`/`PWR_MGMT_2` wake sequence, and a raw
+accel/gyro burst read are all implemented and producing sane values on real
+hardware. See `firmware/lib/icm20948/` for the driver and
+`firmware/lib/icm20948_bitops/` for the unit-tested pure bit-math helpers.
+
+This is still a simple polling sketch (`firmware/src/main.cpp`), **not**
+the hardware-timer-interrupt-driven sampling this file's standing
+constraints require. That ISR + timestamping pipeline is the next piece of
+work, and is a prerequisite for calibration data collection (gyro bias,
+6-position accel, mag hard/soft iron) — don't skip ahead to calibration
+math before it's in place.
