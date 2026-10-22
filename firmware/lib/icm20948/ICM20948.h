@@ -23,6 +23,13 @@ public:
     // Must be called before readAccelGyroRaw() will return live data.
     void wake();
 
+    // Bank 2 output config for timer-driven sampling: ODR alignment on, then
+    // gyro and accel at their full internal rate (~1.1 kHz, dividers 0) with
+    // the DLPF at ~51 Hz bandwidth, ranges +/-250 dps and +/-2 g. The MCU
+    // timer samples well below this rate, so each read returns data at most
+    // ~0.9 ms old, and the DLPF keeps content below that rate's Nyquist.
+    void configureSampling();
+
     // Burst-reads the 12-byte ACCEL_XOUT_H..GYRO_ZOUT_L block (bank 0,
     // 0x2D-0x38) in one I2C transaction and fills out[0..5] with
     // {ax, ay, az, gx, gy, gz} as raw signed counts.

@@ -1,6 +1,7 @@
 #include "ICM20948.h"
 #include "BankSelect.h"
 #include "CombineBigEndian.h"
+#include "ConfigBits.h"
 
 namespace {
 constexpr uint8_t REG_BANK_SEL = 0x7F;
@@ -10,6 +11,19 @@ constexpr uint8_t PWR_MGMT_1 = 0x06;
 constexpr uint8_t PWR_MGMT_2 = 0x07;
 constexpr uint8_t ACCEL_XOUT_H = 0x2D;
 constexpr uint8_t ACCEL_GYRO_BLOCK_LEN = 12;
+
+constexpr uint8_t CONFIG_BANK = 2;
+constexpr uint8_t GYRO_SMPLRT_DIV = 0x00;
+constexpr uint8_t GYRO_CONFIG_1 = 0x01;
+constexpr uint8_t ODR_ALIGN_EN = 0x09;
+constexpr uint8_t ACCEL_SMPLRT_DIV_1 = 0x10;
+constexpr uint8_t ACCEL_SMPLRT_DIV_2 = 0x11;
+constexpr uint8_t ACCEL_CONFIG = 0x14;
+
+constexpr uint8_t DLPFCFG_51HZ = 3;  // gyro 51.2 Hz / accel 50.4 Hz 3dB
+constexpr uint8_t GYRO_FS_250DPS = 0;
+constexpr uint8_t ACCEL_FS_2G = 0;
+constexpr uint8_t SMPLRT_DIV_FULL_RATE = 0;
 }  // namespace
 
 void ICM20948::begin(TwoWire &wire, uint8_t address) {
@@ -50,6 +64,20 @@ void ICM20948::wake() {
     writeRegister(0, PWR_MGMT_1, 0x01);
     // All accel/gyro axes enabled (disable bits cleared).
     writeRegister(0, PWR_MGMT_2, 0x00);
+}
+
+void ICM20948::configureSampling() {
+    // Alignment must be enabled before the divider writes it keys off.
+    writeRegister(CONFIG_BANK, ODR_ALIGN_EN, 0x01);
+    writeRegister(CONFIG_BANK, GYRO_CONFIG_1,
+                  filterConfigValue(DLPFCFG_51HZ, GYRO_FS_250DPS, true));
+    writeRegister(CONFIG_BANK, ACCEL_CONFIG,
+                  filterConfigValue(DLPFCFG_51HZ, ACCEL_FS_2G, true));
+    writeRegister(CONFIG_BANK, GYRO_SMPLRT_DIV, SMPLRT_DIV_FULL_RATE);
+    writeRegister(CONFIG_BANK, ACCEL_SMPLRT_DIV_1,
+                  accelSmplrtDivHigh(SMPLRT_DIV_FULL_RATE));
+    writeRegister(CONFIG_BANK, ACCEL_SMPLRT_DIV_2,
+                  accelSmplrtDivLow(SMPLRT_DIV_FULL_RATE));
 }
 
 void ICM20948::readAccelGyroRaw(int16_t out[6]) {

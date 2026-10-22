@@ -105,9 +105,16 @@ accel/gyro burst read are all implemented and producing sane values on real
 hardware. See `firmware/lib/icm20948/` for the driver and
 `firmware/lib/icm20948_bitops/` for the unit-tested pure bit-math helpers.
 
-This is still a simple polling sketch (`firmware/src/main.cpp`), **not**
-the hardware-timer-interrupt-driven sampling this file's standing
-constraints require. That ISR + timestamping pipeline is the next piece of
-work, and is a prerequisite for calibration data collection (gyro bias,
-6-position accel, mag hard/soft iron) — don't skip ahead to calibration
-math before it's in place.
+Timer-interrupt-driven sampling is in place and verified on hardware
+(`firmware/src/main.cpp`): a hardware timer at 200 Hz timestamps each tick in
+its ISR and wakes a sampler task that does the I2C burst read; samples are
+queued and streamed over USB as CSV (`seq,t_us,ax,ay,az,gx,gy,gz`). The IMU
+runs at its full internal rate (~1.1 kHz, DLPF ~51 Hz) so each timer read gets
+fresh data. `analysis/capture_imu.py` captures the stream to `data/raw/` and
+reports missed samples and interval jitter. Verification run (60 s, board at
+rest): 12000 samples, 0 missed, every interval exactly 5000 us. Note `t_us` is
+the timer-fire time, not the I2C read-completion time.
+
+Next: calibration data collection (gyro bias, 6-position accel), then the
+magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
+over USB.
