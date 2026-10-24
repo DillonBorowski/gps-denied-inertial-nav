@@ -42,6 +42,3 @@ Thumbs.db
 data/raw/*.bin
 data/raw/*.dat
 *.log
-
-# --- Local only ---
-CLAUDE.md

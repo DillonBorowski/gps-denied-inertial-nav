@@ -23,7 +23,7 @@ REG_BANK_SEL (0x7F)
 
 **Every register access writes `REG_BANK_SEL` first.** The driver never
 assumes the bank left over from the previous access (see
-[project-plan.md](project-plan.md#rules)).
+[CLAUDE.md](../CLAUDE.md#standing-constraints)).
 
 ## Bank 0 — data & top-level control
 

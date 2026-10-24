@@ -17,7 +17,7 @@ versus IMU-only dead reckoning.
 | Improvement | TBD |
 
 These come from the Phase 3 and Phase 4 hardware runs. See
-[docs/project-plan.md](docs/project-plan.md) for the phases and rules.
+[CLAUDE.md](CLAUDE.md) for the phases and rules.
 
 ## Hardware
 
@@ -32,7 +32,7 @@ These come from the Phase 3 and Phase 4 hardware runs. See
 Phase 1 (IMU bring-up and calibration) is in progress. The raw-register
 driver and 200 Hz timer-driven sampling work on hardware, and gyro bias
 calibration is underway. Details are in
-[docs/project-plan.md](docs/project-plan.md#status).
+[CLAUDE.md](CLAUDE.md#current-status).
 
 ## Building
 
