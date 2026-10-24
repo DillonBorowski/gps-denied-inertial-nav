@@ -1,9 +1,6 @@
 #include <unity.h>
 #include "ConfigBits.h"
 
-// GYRO_CONFIG_1 and ACCEL_CONFIG share one layout:
-// [5:3] DLPFCFG, [2:1] FS_SEL, [0] FCHOICE.
-
 void test_all_zero_fields_encode_to_zero() {
     TEST_ASSERT_EQUAL_UINT8(0x00, filterConfigValue(0, 0, false));
 }
@@ -17,8 +14,7 @@ void test_all_fields_max() {
 }
 
 void test_out_of_range_fields_are_masked() {
-    // DLPFCFG is 3 bits, FS_SEL is 2 bits; overflow must not bleed into
-    // neighbouring fields.
+    // Overflow shouldn't bleed into the next field.
     TEST_ASSERT_EQUAL_UINT8(0x00, filterConfigValue(8, 4, false));
 }
 

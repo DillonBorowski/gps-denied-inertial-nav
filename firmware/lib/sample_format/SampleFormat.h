@@ -4,22 +4,18 @@
 #include <cstdint>
 #include <cstdio>
 
-// One timer-driven IMU sample. seq is the timer tick number, so a gap in
-// seq on the host means a sample was missed or dropped.
+// One IMU sample. seq is the timer tick, so gaps mean missed samples.
 struct Sample {
     uint32_t seq;
-    uint64_t tUs;     // esp_timer time captured in the timer ISR
-    int16_t raw[7];   // {ax, ay, az, gx, gy, gz, temp} raw signed counts
+    uint64_t tUs;     // timer ISR time
+    int16_t raw[7];   // ax, ay, az, gx, gy, gz, temp
 };
 
-// Longest possible line: 10 + 20 + 7*6 digits/signs, 8 commas, '\n', '\0'.
+// Worst case: 10 + 20 + 7*6 chars, 8 commas, newline, null.
 constexpr size_t SAMPLE_CSV_MAX_LEN = 96;
 
-// Column order of formatSampleCsv(), for the stream header.
 constexpr const char *SAMPLE_CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz,temp";
 
-// Writes "seq,t_us,ax,ay,az,gx,gy,gz,temp\n" into buf. Returns snprintf's
-// result.
 inline int formatSampleCsv(const Sample &s, char *buf, size_t len) {
     return snprintf(buf, len, "%lu,%llu,%d,%d,%d,%d,%d,%d,%d\n",
                     static_cast<unsigned long>(s.seq),

@@ -1,11 +1,6 @@
-// Phase 1: hardware-timer-driven, timestamped accel/gyro/temp sampling.
-//
-// A hardware timer fires at SAMPLE_RATE_HZ. Its ISR only captures the time
-// and tick number and wakes the sampler task, which does the I2C burst read
-// (I2C is not safe inside an ISR). Samples go through a queue to loop(),
-// which streams them as CSV over USB, so a stalled serial port can't delay
-// sampling. A gap in seq on the host means a sample was missed or dropped;
-// analysis/capture_imu.py reports both and the interval jitter.
+// Timer-driven IMU sampling at 200 Hz, streamed over USB as CSV.
+// The ISR only timestamps and wakes the sampler task (no I2C in the ISR).
+// loop() handles serial so a slow port can't stall sampling.
 
 #include <Arduino.h>
 #include <esp_timer.h>
@@ -22,7 +17,7 @@ static const uint32_t SAMPLE_RATE_HZ = 200;
 static const uint32_t TIMER_TICK_HZ = 1000000;  // 80 MHz APB / 80
 static const uint16_t TIMER_DIVIDER = 80;
 static const uint8_t SAMPLE_TIMER_NUM = 0;
-static const UBaseType_t SAMPLE_QUEUE_LEN = 64;  // ~0.3 s of slack at 200 Hz
+static const UBaseType_t SAMPLE_QUEUE_LEN = 64;  // ~0.3 s at 200 Hz
 
 ICM20948 imu;
 
@@ -52,8 +47,7 @@ static void samplerLoop(void *) {
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    // If this task ran late, ticks coalesce and seq jumps; the host sees
-    // that as missed samples rather than silently wrong timing.
+    // If this runs late, seq skips and the host counts it as missed.
     Sample s;
     portENTER_CRITICAL(&tickMux);
     s.seq = tickSeq;
@@ -61,7 +55,7 @@ static void samplerLoop(void *) {
     portEXIT_CRITICAL(&tickMux);
 
     imu.readAccelGyroTempRaw(s.raw);
-    xQueueSend(sampleQueue, &s, 0);  // full queue drops; seq shows the gap
+    xQueueSend(sampleQueue, &s, 0);  // drop if full, seq shows the gap
   }
 }
 
@@ -79,7 +73,7 @@ void setup() {
                 whoAmI == EXPECTED_WHO_AM_I ? "PASS" : "FAIL");
 
   imu.wake();
-  delay(50);  // let the clock settle before config writes (setup only)
+  delay(50);  // clock settle, setup only
   imu.configureSampling();
 
   sampleQueue = xQueueCreate(SAMPLE_QUEUE_LEN, sizeof(Sample));

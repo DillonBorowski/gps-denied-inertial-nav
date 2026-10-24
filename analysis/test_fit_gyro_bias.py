@@ -74,7 +74,7 @@ class WindowMeansTest(unittest.TestCase):
     def test_splits_into_equal_windows_and_drops_remainder(self):
         gyro = [(i, 0, 0) for i in range(10)]
         means = window_means(gyro, window_len=4)
-        # Windows [0..3] and [4..7]; the trailing 8,9 are dropped.
+        # 8 and 9 don't fill a window.
         self.assertEqual(means, [[1.5, 0.0, 0.0], [5.5, 0.0, 0.0]])
 
     def test_works_on_single_values_like_temp(self):

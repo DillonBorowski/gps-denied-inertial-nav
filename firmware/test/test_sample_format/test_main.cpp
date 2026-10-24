@@ -22,7 +22,7 @@ void test_negative_counts_keep_sign() {
 }
 
 void test_timestamp_beyond_32_bits_is_not_truncated() {
-    // ~79 minutes of uptime in microseconds overflows uint32_t.
+    // ~80 min of uptime in us overflows 32 bits.
     Sample s = {1, 4800000000ULL, {0, 0, 0, 0, 0, 0, 0}};
     char buf[SAMPLE_CSV_MAX_LEN];
     formatSampleCsv(s, buf, sizeof(buf));

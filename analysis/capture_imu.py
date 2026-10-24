@@ -1,14 +1,11 @@
-"""Capture the firmware's timer-driven IMU stream over USB serial to a CSV.
+"""Capture the IMU stream over USB serial to a CSV.
 
 Usage:
     python analysis/capture_imu.py --port COM3 --seconds 60
     python analysis/capture_imu.py --port COM3 --seconds 60 --out data/raw/still.csv
 
-Each data line from the firmware is "seq,t_us,ax,ay,az,gx,gy,gz,temp" (raw
-counts, t_us captured in the timer ISR; older firmware sent no temp column).
-Lines starting with '#' are firmware status messages and are echoed to the
-console, not saved. After capture, prints how
-many samples were missed (gaps in seq) and the sample-interval statistics.
+Lines starting with '#' are firmware messages and are printed, not saved.
+Prints missed samples and interval stats at the end.
 """
 
 import argparse
@@ -23,9 +20,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 def parse_sample_line(line):
-    """Returns (seq, t_us, [ax, ay, az, gx, gy, gz(, temp)]), or None for
-    anything that isn't a complete sample line. The temp column is optional
-    so captures from before it was added still parse."""
+    """(seq, t_us, values) or None. Temp column is optional for old captures."""
     fields = line.strip().split(",")
     if len(fields) not in (8, 9):
         return None
@@ -37,9 +32,7 @@ def parse_sample_line(line):
 
 
 def summarize(seqs, times_us):
-    """Missed-sample count and interval stats. Intervals are only taken
-    between consecutive seq numbers, so a dropped sample isn't counted as
-    timing jitter."""
+    """Missed samples and interval stats (gaps don't count as jitter)."""
     missed = 0
     intervals = []
     for i in range(1, len(seqs)):
@@ -65,14 +58,14 @@ def default_out_path():
 
 
 def capture(port, seconds, out_path):
-    import serial  # pyserial; imported here so the tests don't need it
+    import serial  # here so tests don't need pyserial
 
     seqs, times_us = [], []
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with serial.Serial(port, 115200, timeout=1) as ser, \
             open(out_path, "w", newline="") as out:
         ser.reset_input_buffer()
-        ser.readline()  # discard a possibly partial first line
+        ser.readline()  # skip partial first line
         out.write(CSV_HEADER + "\n")
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:

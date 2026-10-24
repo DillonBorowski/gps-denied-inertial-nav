@@ -1,19 +1,14 @@
 # ICM-20948 Register Map Notes
 
-Working notes from Phase 0 register-map study. This is a reference for
-writing the raw-register driver — not exhaustive, just the registers this
-project actually touches (raw accel/gyro/mag output, config, sample rate,
-interrupts, and the bank-select mechanism itself).
+My notes from the Phase 0 register-map study. Not exhaustive, just the
+registers this project uses.
 
 **Sources:**
-- SparkFun's official `ICM_20948_REGISTERS.h`, which the library's own
-  comment describes as "a useful c translation of the datasheet register
-  map" — used here because TDK's datasheet PDF blocks non-browser fetches
-  (`product.tdk.com/.../ds-000189-icm-20948-v1.5.pdf` returns 403/Access
-  Denied to automated requests). If a discrepancy turns up during bring-up,
-  the PDF (fetched manually, in a browser) is the tiebreaker, not this file.
-- AK09916 I2C address and dual access-mode behavior cross-checked against
-  SFU's CMPT433 course notes and the SparkFun community forum.
+- SparkFun's `ICM_20948_REGISTERS.h` (a C translation of the datasheet
+  register map). If anything disagrees, the TDK datasheet (DS-000189 v1.5)
+  wins.
+- AK09916 address and access modes cross-checked against SFU's CMPT433
+  course notes and the SparkFun forum.
 
 ## Bank switching
 
@@ -26,10 +21,9 @@ REG_BANK_SEL (0x7F)
   bits [5:4] = USER_BANK (0-3)
 ```
 
-**Every register access in this project must write `REG_BANK_SEL` first**
-if the target register isn't already known to be in the currently-selected
-bank. Never assume the bank left over from the previous access is correct —
-see the standing constraint in [CLAUDE.md](../CLAUDE.md).
+**Every register access writes `REG_BANK_SEL` first.** The driver never
+assumes the bank left over from the previous access (see
+[project-plan.md](project-plan.md#rules)).
 
 ## Bank 0 — data & top-level control
 
@@ -50,8 +44,8 @@ see the standing constraint in [CLAUDE.md](../CLAUDE.md).
 | `TEMP_OUT_H` / `TEMP_OUT_L` | 0x39–0x3A | Raw die temperature |
 | `EXT_PERIPH_SENS_DATA_00..23` | 0x3B–0x52 | Where I2C-master-mode peripheral reads (e.g. AK09916 via bank 3) land |
 
-`ACCEL_XOUT_H` through `GYRO_ZOUT_L` is one contiguous 12-byte block —
-a single burst read from 0x2D covers all six axes in one I2C transaction.
+`ACCEL_XOUT_H` through `TEMP_OUT_L` is one contiguous 14-byte block, so a
+single burst read from 0x2D gets all six axes plus temperature.
 
 ## Bank 1 — self-test & accel offsets
 
@@ -59,7 +53,7 @@ a single burst read from 0x2D covers all six axes in one I2C transaction.
 |---|---|---|
 | `SELF_TEST_X/Y/Z_GYRO` | 0x02–0x04 | Factory self-test data |
 | `SELF_TEST_X/Y/Z_ACCEL` | 0x0E–0x10 | Factory self-test data |
-| `XA_OFFS_H/L`, `YA_OFFS_H/L`, `ZA_OFFS_H/L` | 0x14–0x1B | Factory accel offset trim (not our calibration path — ours is offline, applied in software, per CLAUDE.md) |
+| `XA_OFFS_H/L`, `YA_OFFS_H/L`, `ZA_OFFS_H/L` | 0x14–0x1B | Factory accel offset trim (not used; calibration is done offline and applied in software) |
 
 ## Bank 2 — gyro/accel config & sample rate
 
@@ -106,18 +100,14 @@ reached one of two ways:
 | `CNTL2` | 0x31 | Operating mode (power-down / single-shot / continuous rates) |
 | `CNTL3` | 0x32 | `SRST` — soft reset |
 
-**Open question for architecture decisions:** which access mode to use.
-I2C master mode keeps everything readable from one burst read starting at
-Bank 0 (simpler ISR, one bus transaction per sample), at the cost of Bank 3
-setup complexity. Bypass mode is a simpler AK09916 driver but means a
-second, separately-timed I2C transaction per sample. Leaning toward I2C
-master mode so the timer ISR can do a single atomic burst read — to be
-confirmed once we're bringing the sensor up.
+**Open question:** which access mode to use. I2C master mode puts the mag
+data in the same Bank 0 burst read (one transaction per sample) but needs
+Bank 3 setup. Bypass mode is a simpler driver but adds a second, separately
+timed read per sample. Leaning toward master mode; will decide at mag
+bring-up.
 
 ## Verification plan
 
-Once the toolchain can build and flash, the first sanity check is reading
-`WHO_AM_I` (expect `0xEA`) and, once the magnetometer path is chosen,
-`WIA2` (expect `0x09`). Both are cheap, unambiguous confirmations that bank
-switching and basic I2C framing are working before writing any config
-registers.
+First check is `WHO_AM_I` (expect `0xEA`, confirmed), then `WIA2` (expect
+`0x09`) once the mag path is chosen. Both confirm bank switching and I2C
+framing before any config writes.

@@ -43,7 +43,7 @@ uint8_t ICM20948::readRegister(uint8_t bank, uint8_t reg) {
     selectBank(bank);
     wire_->beginTransmission(address_);
     wire_->write(reg);
-    wire_->endTransmission(false);  // repeated start, keep the bus held
+    wire_->endTransmission(false);  // repeated start
     wire_->requestFrom(address_, static_cast<uint8_t>(1));
     return wire_->read();
 }
@@ -61,14 +61,12 @@ uint8_t ICM20948::readWhoAmI() {
 }
 
 void ICM20948::wake() {
-    // CLKSEL=1 (auto-select best clock), SLEEP/LP_EN/TEMP_DIS cleared.
-    writeRegister(0, PWR_MGMT_1, 0x01);
-    // All accel/gyro axes enabled (disable bits cleared).
-    writeRegister(0, PWR_MGMT_2, 0x00);
+    writeRegister(0, PWR_MGMT_1, 0x01);  // auto clock, awake, temp on
+    writeRegister(0, PWR_MGMT_2, 0x00);  // all axes on
 }
 
 void ICM20948::configureSampling() {
-    // Alignment must be enabled before the divider writes it keys off.
+    // ODR alignment has to be on before the divider writes.
     writeRegister(CONFIG_BANK, ODR_ALIGN_EN, 0x01);
     writeRegister(CONFIG_BANK, GYRO_CONFIG_1,
                   filterConfigValue(DLPFCFG_51HZ, GYRO_FS_250DPS, true));
@@ -85,7 +83,7 @@ void ICM20948::readAccelGyroTempRaw(int16_t out[7]) {
     selectBank(0);
     wire_->beginTransmission(address_);
     wire_->write(ACCEL_XOUT_H);
-    wire_->endTransmission(false);  // repeated start, keep the bus held
+    wire_->endTransmission(false);  // repeated start
     wire_->requestFrom(address_, ACCEL_GYRO_TEMP_BLOCK_LEN);
 
     uint8_t raw[ACCEL_GYRO_TEMP_BLOCK_LEN];

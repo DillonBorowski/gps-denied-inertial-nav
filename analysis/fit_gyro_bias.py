@@ -1,15 +1,11 @@
-"""Fit the gyro bias from a stationary IMU capture.
+"""Fit gyro bias from a stationary capture.
 
 Usage:
-    python analysis/fit_gyro_bias.py data/calibration/gyro-bias-still-20261021.csv
+    python analysis/fit_gyro_bias.py CAPTURE.csv
     python analysis/fit_gyro_bias.py CAPTURE.csv --out data/calibration/gyro-bias.json
 
-The board must be taped flat and untouched for the whole capture. Bias is the
-per-axis mean of the raw gyro counts. To show whether the bias holds steady
-within the run, the capture is also split into fixed windows (default 60 s)
-and the spread of the window means is reported. Captures that include the
-die temperature column also report temperature per window, so bias drift can
-be checked against warm-up.
+Board taped flat and untouched. Also prints per-minute means (and temp if
+logged) to check drift.
 """
 
 import argparse
@@ -19,9 +15,9 @@ import statistics
 
 from capture_imu import parse_sample_line
 
-GYRO_LSB_PER_DPS = 131.0  # +/-250 dps full scale (GYRO_FS_SEL = 0)
+GYRO_LSB_PER_DPS = 131.0  # +/-250 dps
 SAMPLE_RATE_HZ = 200
-TEMP_ROOM_OFFSET_COUNTS = 21  # ICM-20948 datasheet section 3.4
+TEMP_ROOM_OFFSET_COUNTS = 21  # datasheet 3.4
 TEMP_COUNTS_PER_C = 333.87
 
 
@@ -30,8 +26,7 @@ def temp_counts_to_c(counts):
 
 
 def load_capture(lines):
-    """Returns (t_us list, list of (gx, gy, gz), temp counts list) from
-    capture CSV lines. temp is empty for captures without a temp column."""
+    """(t_us, gyro xyz tuples, temp counts). temp is empty for old captures."""
     t_us, gyro, temp = [], [], []
     for line in lines:
         sample = parse_sample_line(line)
@@ -57,8 +52,7 @@ def fit_bias(gyro):
 
 
 def window_means(rows, window_len):
-    """Per-column means of consecutive full windows; a partial tail is
-    dropped."""
+    """Mean of each full window; leftover samples are dropped."""
     means = []
     for start in range(0, len(rows) - window_len + 1, window_len):
         cols = zip(*rows[start:start + window_len])

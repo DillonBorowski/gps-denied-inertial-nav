@@ -23,7 +23,7 @@ class ParseSampleLineTest(unittest.TestCase):
         self.assertIsNone(parse_sample_line("# WHO_AM_I = 0xEA\n"))
 
     def test_partial_line_is_not_a_sample(self):
-        # Opening the port mid-stream can hand us the tail of a line.
+        # Opening mid-stream can give a partial line.
         self.assertIsNone(parse_sample_line("3,4,5\n"))
         self.assertIsNone(parse_sample_line(""))
 
@@ -40,8 +40,7 @@ class SummarizeTest(unittest.TestCase):
         self.assertEqual(s["missed"], 3)
 
     def test_interval_stats_only_use_consecutive_samples(self):
-        # The 1 -> 3 step spans a dropped sample, so its 10 ms interval must
-        # not count as jitter.
+        # The 3 -> 5 gap shouldn't count as jitter.
         s = summarize([1, 2, 3, 5], [0, 5000, 10100, 20000])
         self.assertEqual(s["dt_min_us"], 5000)
         self.assertEqual(s["dt_max_us"], 5100)
