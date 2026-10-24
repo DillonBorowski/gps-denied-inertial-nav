@@ -119,13 +119,25 @@ the timer-fire time, not the I2C read-completion time.
 
 Gyro bias: `analysis/fit_gyro_bias.py` fits per-axis bias, noise, and
 per-minute window means (plus die temp when logged) from a stationary
-capture. Three 5-minute stationary captures so far (`data/calibration/`)
-disagree: gx is steady (~25-26 counts), but gy ranged 60.6-73.2 and gz
--1.1-5.4 counts across runs. A capture right after power-on drifted steadily
-within the run; a back-to-back warm one was flat. Warm-up is the suspected
-cause but is unconfirmed — the next step is a cold-start capture with
-temperature logged. Don't pick a final bias value until that's understood.
+capture, and cuts out bumps automatically (any axis >100 counts off its
+median, +/-0.5 s). Captures are in `data/calibration/`.
 
-Next: settle gyro-bias stability vs. temperature, then 6-position accel,
-then the magnetometer (AK09916, not yet brought up). No SD card yet, so
-captures go over USB.
+- After power-on the bias settles over ~5 minutes, then holds within ~1
+  count. Seen on both cold starts (2026-10-24): gy fell ~5 counts before
+  flattening. The 10-min cold-start capture (`gyro-bias-cold-20261024.csv`)
+  logged temp: the die only warmed 21.8 -> 22.3 C, so it can't separate
+  thermal drift from power-on settling. Either way: wait >= 5 min after
+  power-on before any capture or run.
+- Settled bias on 2026-10-24: ~gx 22.5 / gy 67.4 / gz 2.0 counts at 22.2 C.
+  The 2026-10-21 run gave gx 26.1 / gy 60.6 / gz -1.1 (no temp logged), so
+  day-to-day bias differs by up to ~7 counts (~0.05 dps). Unexplained. The
+  board was taped down more firmly on 10/24, and mounting stress can shift
+  MEMS bias, but that's unverified.
+- Open design question: a single flash-stored bias may be off by that much
+  on a given day. One option within "calibration is offline" is a 30-60 s
+  stationary segment at the start of every run, with that run's bias fit
+  offline from its own log.
+
+Next: decide the per-run bias question, then 6-position accel, then the
+magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
+over USB.

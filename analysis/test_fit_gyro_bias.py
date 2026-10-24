@@ -5,6 +5,7 @@ from fit_gyro_bias import (
     GYRO_LSB_PER_DPS,
     fit_bias,
     load_capture,
+    motion_mask,
     temp_counts_to_c,
     window_means,
 )
@@ -83,6 +84,36 @@ class WindowMeansTest(unittest.TestCase):
 
     def test_no_windows_when_capture_is_shorter_than_one(self):
         self.assertEqual(window_means([(1, 2, 3)], window_len=4), [])
+
+    def test_keep_mask_drops_samples_but_windows_stay_in_place(self):
+        rows = [(0,), (0,), (100,), (2,), (4,), (4,), (4,), (4,)]
+        keep = [True, True, False, True, True, True, True, True]
+        self.assertEqual(window_means(rows, window_len=4, keep=keep),
+                         [[2 / 3], [4.0]])
+
+    def test_window_mostly_excluded_is_none(self):
+        rows = [(1,)] * 8
+        keep = [False, False, False, True] + [True] * 4
+        self.assertEqual(window_means(rows, window_len=4, keep=keep),
+                         [None, [1.0]])
+
+
+class MotionMaskTest(unittest.TestCase):
+    def test_still_samples_are_all_kept(self):
+        gyro = [(10, 60, 0), (12, 58, 2), (8, 62, -2)] * 3
+        self.assertTrue(all(motion_mask(gyro, threshold=100, pad=1)))
+
+    def test_spike_and_padding_are_dropped(self):
+        gyro = [(0, 0, 0)] * 7
+        gyro[3] = (0, 500, 0)
+        keep = motion_mask(gyro, threshold=100, pad=1)
+        self.assertEqual(keep, [True, True, False, False, False, True, True])
+
+    def test_any_axis_counts_as_motion(self):
+        gyro = [(0, 0, 0)] * 5
+        gyro[0] = (0, 0, -300)
+        keep = motion_mask(gyro, threshold=100, pad=0)
+        self.assertEqual(keep, [False, True, True, True, True])
 
 
 if __name__ == "__main__":
