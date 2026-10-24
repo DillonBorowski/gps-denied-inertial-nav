@@ -108,13 +108,24 @@ hardware. See `firmware/lib/icm20948/` for the driver and
 Timer-interrupt-driven sampling is in place and verified on hardware
 (`firmware/src/main.cpp`): a hardware timer at 200 Hz timestamps each tick in
 its ISR and wakes a sampler task that does the I2C burst read; samples are
-queued and streamed over USB as CSV (`seq,t_us,ax,ay,az,gx,gy,gz`). The IMU
+queued and streamed over USB as CSV (`seq,t_us,ax,ay,az,gx,gy,gz,temp`; `temp`
+is the raw die temperature, read in the same burst, and is absent from
+captures before 2026-10-24). The IMU
 runs at its full internal rate (~1.1 kHz, DLPF ~51 Hz) so each timer read gets
 fresh data. `analysis/capture_imu.py` captures the stream to `data/raw/` and
 reports missed samples and interval jitter. Verification run (60 s, board at
 rest): 12000 samples, 0 missed, every interval exactly 5000 us. Note `t_us` is
 the timer-fire time, not the I2C read-completion time.
 
-Next: calibration data collection (gyro bias, 6-position accel), then the
-magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
-over USB.
+Gyro bias: `analysis/fit_gyro_bias.py` fits per-axis bias, noise, and
+per-minute window means (plus die temp when logged) from a stationary
+capture. Three 5-minute stationary captures so far (`data/calibration/`)
+disagree: gx is steady (~25-26 counts), but gy ranged 60.6-73.2 and gz
+-1.1-5.4 counts across runs. A capture right after power-on drifted steadily
+within the run; a back-to-back warm one was flat. Warm-up is the suspected
+cause but is unconfirmed — the next step is a cold-start capture with
+temperature logged. Don't pick a final bias value until that's understood.
+
+Next: settle gyro-bias stability vs. temperature, then 6-position accel,
+then the magnetometer (AK09916, not yet brought up). No SD card yet, so
+captures go over USB.

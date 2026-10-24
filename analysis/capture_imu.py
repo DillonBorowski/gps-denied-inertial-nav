@@ -4,9 +4,10 @@ Usage:
     python analysis/capture_imu.py --port COM3 --seconds 60
     python analysis/capture_imu.py --port COM3 --seconds 60 --out data/raw/still.csv
 
-Each data line from the firmware is "seq,t_us,ax,ay,az,gx,gy,gz" (raw counts,
-t_us captured in the timer ISR). Lines starting with '#' are firmware status
-messages and are echoed to the console, not saved. After capture, prints how
+Each data line from the firmware is "seq,t_us,ax,ay,az,gx,gy,gz,temp" (raw
+counts, t_us captured in the timer ISR; older firmware sent no temp column).
+Lines starting with '#' are firmware status messages and are echoed to the
+console, not saved. After capture, prints how
 many samples were missed (gaps in seq) and the sample-interval statistics.
 """
 
@@ -17,15 +18,16 @@ import statistics
 import time
 
 SEQ_MODULUS = 2**32
-CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz"
+CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz,temp"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 def parse_sample_line(line):
-    """Returns (seq, t_us, [ax, ay, az, gx, gy, gz]), or None for anything
-    that isn't a complete sample line."""
+    """Returns (seq, t_us, [ax, ay, az, gx, gy, gz(, temp)]), or None for
+    anything that isn't a complete sample line. The temp column is optional
+    so captures from before it was added still parse."""
     fields = line.strip().split(",")
-    if len(fields) != 8:
+    if len(fields) not in (8, 9):
         return None
     try:
         values = [int(f) for f in fields]

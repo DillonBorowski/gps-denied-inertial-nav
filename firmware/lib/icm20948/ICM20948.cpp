@@ -10,7 +10,8 @@ constexpr uint8_t WHO_AM_I_REG = 0x00;
 constexpr uint8_t PWR_MGMT_1 = 0x06;
 constexpr uint8_t PWR_MGMT_2 = 0x07;
 constexpr uint8_t ACCEL_XOUT_H = 0x2D;
-constexpr uint8_t ACCEL_GYRO_BLOCK_LEN = 12;
+constexpr uint8_t ACCEL_GYRO_TEMP_BLOCK_LEN = 14;
+constexpr uint8_t ACCEL_GYRO_TEMP_WORDS = 7;
 
 constexpr uint8_t CONFIG_BANK = 2;
 constexpr uint8_t GYRO_SMPLRT_DIV = 0x00;
@@ -80,19 +81,19 @@ void ICM20948::configureSampling() {
                   accelSmplrtDivLow(SMPLRT_DIV_FULL_RATE));
 }
 
-void ICM20948::readAccelGyroRaw(int16_t out[6]) {
+void ICM20948::readAccelGyroTempRaw(int16_t out[7]) {
     selectBank(0);
     wire_->beginTransmission(address_);
     wire_->write(ACCEL_XOUT_H);
     wire_->endTransmission(false);  // repeated start, keep the bus held
-    wire_->requestFrom(address_, ACCEL_GYRO_BLOCK_LEN);
+    wire_->requestFrom(address_, ACCEL_GYRO_TEMP_BLOCK_LEN);
 
-    uint8_t raw[ACCEL_GYRO_BLOCK_LEN];
-    for (uint8_t i = 0; i < ACCEL_GYRO_BLOCK_LEN; i++) {
+    uint8_t raw[ACCEL_GYRO_TEMP_BLOCK_LEN];
+    for (uint8_t i = 0; i < ACCEL_GYRO_TEMP_BLOCK_LEN; i++) {
         raw[i] = wire_->read();
     }
 
-    for (uint8_t axis = 0; axis < 6; axis++) {
-        out[axis] = combineBigEndian(raw[axis * 2], raw[axis * 2 + 1]);
+    for (uint8_t w = 0; w < ACCEL_GYRO_TEMP_WORDS; w++) {
+        out[w] = combineBigEndian(raw[w * 2], raw[w * 2 + 1]);
     }
 }

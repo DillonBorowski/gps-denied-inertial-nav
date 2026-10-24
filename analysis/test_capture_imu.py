@@ -10,8 +10,16 @@ class ParseSampleLineTest(unittest.TestCase):
             (7, 123456, [1, -2, 3, 4, 5, -6]),
         )
 
+    def test_parses_line_with_temp_column(self):
+        self.assertEqual(
+            parse_sample_line("7,123456,1,-2,3,4,5,-6,1500\n"),
+            (7, 123456, [1, -2, 3, 4, 5, -6, 1500]),
+        )
+
     def test_header_and_comment_lines_are_not_samples(self):
         self.assertIsNone(parse_sample_line("seq,t_us,ax,ay,az,gx,gy,gz\n"))
+        self.assertIsNone(
+            parse_sample_line("seq,t_us,ax,ay,az,gx,gy,gz,temp\n"))
         self.assertIsNone(parse_sample_line("# WHO_AM_I = 0xEA\n"))
 
     def test_partial_line_is_not_a_sample(self):

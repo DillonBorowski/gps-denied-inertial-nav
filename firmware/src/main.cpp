@@ -1,4 +1,4 @@
-// Phase 1: hardware-timer-driven, timestamped accel/gyro sampling.
+// Phase 1: hardware-timer-driven, timestamped accel/gyro/temp sampling.
 //
 // A hardware timer fires at SAMPLE_RATE_HZ. Its ISR only captures the time
 // and tick number and wakes the sampler task, which does the I2C burst read
@@ -60,7 +60,7 @@ static void samplerLoop(void *) {
     s.tUs = tickTimeUs;
     portEXIT_CRITICAL(&tickMux);
 
-    imu.readAccelGyroRaw(s.raw);
+    imu.readAccelGyroTempRaw(s.raw);
     xQueueSend(sampleQueue, &s, 0);  // full queue drops; seq shows the gap
   }
 }

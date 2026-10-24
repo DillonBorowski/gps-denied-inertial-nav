@@ -20,7 +20,7 @@ public:
     uint8_t readWhoAmI();
 
     // Clears SLEEP and enables all accel/gyro axes (PWR_MGMT_1/2, bank 0).
-    // Must be called before readAccelGyroRaw() will return live data.
+    // Must be called before readAccelGyroTempRaw() will return live data.
     void wake();
 
     // Bank 2 output config for timer-driven sampling: ODR alignment on, then
@@ -30,10 +30,11 @@ public:
     // ~0.9 ms old, and the DLPF keeps content below that rate's Nyquist.
     void configureSampling();
 
-    // Burst-reads the 12-byte ACCEL_XOUT_H..GYRO_ZOUT_L block (bank 0,
-    // 0x2D-0x38) in one I2C transaction and fills out[0..5] with
-    // {ax, ay, az, gx, gy, gz} as raw signed counts.
-    void readAccelGyroRaw(int16_t out[6]);
+    // Burst-reads the 14-byte ACCEL_XOUT_H..TEMP_OUT_L block (bank 0,
+    // 0x2D-0x3A) in one I2C transaction and fills out[0..6] with
+    // {ax, ay, az, gx, gy, gz, temp} as raw signed counts. Die temperature in
+    // degC is approximately (temp - 21) / 333.87 + 21 (datasheet section 3.4).
+    void readAccelGyroTempRaw(int16_t out[7]);
 
 private:
     void selectBank(uint8_t bank);
