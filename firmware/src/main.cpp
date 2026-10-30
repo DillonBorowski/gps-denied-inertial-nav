@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <esp_timer.h>
+#include "GyroBias.h"
 #include "ICM20948.h"
 #include "SampleFormat.h"
 
@@ -82,6 +83,9 @@ void setup() {
 
   Serial.printf("# sampling at %lu Hz\n",
                 static_cast<unsigned long>(SAMPLE_RATE_HZ));
+  Serial.printf("# gyro bias (flash, counts): %.2f %.2f %.2f\n",
+                GYRO_BIAS_COUNTS[0], GYRO_BIAS_COUNTS[1],
+                GYRO_BIAS_COUNTS[2]);
   Serial.println(SAMPLE_CSV_HEADER);
 
   sampleTimer = timerBegin(SAMPLE_TIMER_NUM, TIMER_DIVIDER, true);

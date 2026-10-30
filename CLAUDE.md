@@ -133,11 +133,14 @@ median, +/-0.5 s). Captures are in `data/calibration/`.
   day-to-day bias differs by up to ~7 counts (~0.05 dps). Unexplained. The
   board was taped down more firmly on 10/24, and mounting stress can shift
   MEMS bias, but that's unverified.
-- Open design question: a single flash-stored bias may be off by that much
-  on a given day. One option within "calibration is offline" is a 30-60 s
-  stationary segment at the start of every run, with that run's bias fit
-  offline from its own log.
+- Decision (2026-10-30): use a single flash-stored bias for now. Settled fit
+  (cold-start capture, first 300 s skipped) is gx 22.61 / gy 67.45 / gz 2.05
+  counts, saved in `data/calibration/gyro-bias.json` and compiled into
+  `firmware/lib/calibration/GyroBias.h`. Firmware prints it as a `#` line at
+  startup; the CSV stream stays raw, so switching to a per-run stationary
+  segment later (fit offline from each run's own log) is still possible.
+  Whatever is chosen, IMU-only and fused runs must use the same bias method.
 
-Next: decide the per-run bias question, then 6-position accel, then the
+Next: 6-position accel, then the
 magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
 over USB.
