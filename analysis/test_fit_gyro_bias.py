@@ -17,6 +17,11 @@ CSV = """seq,t_us,ax,ay,az,gx,gy,gz
 4,15000,0,0,16384,16,2,7
 """
 
+CSV_WITH_MAG = """# gyro bias (flash, counts): 1 2 3
+seq,t_us,ax,ay,az,gx,gy,gz,temp,mx,my,mz,mstat
+1,0,0,0,16384,10,-4,1,21,300,-100,-512,1
+"""
+
 CSV_WITH_TEMP = """seq,t_us,ax,ay,az,gx,gy,gz,temp
 1,0,0,0,16384,10,-4,1,21
 2,5000,0,0,16384,12,-2,3,355
@@ -33,6 +38,11 @@ class LoadCaptureTest(unittest.TestCase):
     def test_older_capture_without_temp_has_no_temp(self):
         _, _, temp = load_capture(io.StringIO(CSV))
         self.assertEqual(temp, [])
+
+    def test_reads_temp_from_capture_with_mag_columns(self):
+        _, gyro, temp = load_capture(io.StringIO(CSV_WITH_MAG))
+        self.assertEqual(gyro[0], (10, -4, 1))
+        self.assertEqual(temp, [21])
 
     def test_reads_temp_column_when_present(self):
         _, gyro, temp = load_capture(io.StringIO(CSV_WITH_TEMP))

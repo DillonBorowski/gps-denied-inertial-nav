@@ -100,11 +100,36 @@ reached one of two ways:
 | `CNTL2` | 0x31 | Operating mode (power-down / single-shot / continuous rates) |
 | `CNTL3` | 0x32 | `SRST` — soft reset |
 
-**Open question:** which access mode to use. I2C master mode puts the mag
-data in the same Bank 0 burst read (one transaction per sample) but needs
-Bank 3 setup. Bypass mode is a simpler driver but adds a second, separately
-timed read per sample. Leaning toward master mode; will decide at mag
-bring-up.
+**Decision (2026-10-30): I2C master mode.** The mag data lands in the same
+Bank 0 burst read, so one 23-byte transaction per sample gets accel, gyro,
+temp and mag together. Bypass mode would need a second, separately timed
+read.
+
+Setup as built (`ICM20948::enableMagBus()` / `startMag()`):
+- Device reset first (`PWR_MGMT_1 = 0x80`). Reflashing the ESP32 does not
+  reset the IMU, so without this, register state from an earlier run leaks
+  into the next one.
+- Bank 3 `I2C_MST_ODR_CONFIG = 0x03` (1.1 kHz / 2^3 = 137.5 Hz polling),
+  `I2C_MST_CTRL = 0x17`, then Bank 0 `USER_CTRL.I2C_MST_EN`.
+- Single AK09916 register reads/writes go through peripheral 4 (setup only;
+  polls `I2C_MST_STATUS`). `CNTL3` soft reset, then `CNTL2 = 0x08`
+  (continuous 100 Hz).
+- Peripheral 0 reads 9 bytes from `ST1` (ST1, HX..HZ, TMPS, ST2) on every
+  poll. Reading ST2 releases the data latch.
+
+Measured (board at rest): ~97 new mag readings/s, overrun (`ST1.DOR`) on ~4%
+of samples. Gotchas found on the way:
+- At the default polling rate the mag only gave ~78 readings/s, in
+  alternating stretches of 100 Hz and 50 Hz with `DOR` set. Polling at
+  137.5 Hz fixed it. Likely cause: a mag measurement that finishes while a
+  read is in progress gets dropped, and fast polling means reads are in
+  progress much of the time. Not confirmed against the AK09916 datasheet.
+- `LP_CONFIG = 0x00` (I2C master not duty-cycled) stops peripheral
+  transactions entirely in this config: WIA2 reads time out. Leave
+  `LP_CONFIG` at its reset value.
+- `ST2` reads 0x10 normally (bit 4 is a reserved bit); overflow is bit 3
+  (`HOFL`).
+- Mag axes are not yet checked against the accel/gyro axes.
 
 ## Verification plan
 

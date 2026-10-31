@@ -43,7 +43,7 @@ def load_capture(lines):
         t_us.append(t)
         accel.append(tuple(values[0:3]))
         gyro.append(tuple(values[3:6]))
-        if len(values) == 7:
+        if len(values) >= 7:
             temp.append(values[6])
     return t_us, accel, gyro, temp
 

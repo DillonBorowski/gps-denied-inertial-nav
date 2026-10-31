@@ -1,6 +1,12 @@
 import unittest
 
-from capture_imu import INFO_END, collect_info, parse_sample_line, summarize
+from capture_imu import (
+    CSV_HEADER,
+    INFO_END,
+    collect_info,
+    parse_sample_line,
+    summarize,
+)
 
 
 class ParseSampleLineTest(unittest.TestCase):
@@ -15,6 +21,16 @@ class ParseSampleLineTest(unittest.TestCase):
             parse_sample_line("7,123456,1,-2,3,4,5,-6,1500\n"),
             (7, 123456, [1, -2, 3, 4, 5, -6, 1500]),
         )
+
+    def test_parses_line_with_mag_columns(self):
+        self.assertEqual(
+            parse_sample_line("7,123456,1,-2,3,4,5,-6,1500,300,-100,-512,2049\n"),
+            (7, 123456, [1, -2, 3, 4, 5, -6, 1500, 300, -100, -512, 2049]),
+        )
+
+    def test_header_matches_firmware(self):
+        self.assertEqual(
+            CSV_HEADER, "seq,t_us,ax,ay,az,gx,gy,gz,temp,mx,my,mz,mstat")
 
     def test_header_and_comment_lines_are_not_samples(self):
         self.assertIsNone(parse_sample_line("seq,t_us,ax,ay,az,gx,gy,gz\n"))

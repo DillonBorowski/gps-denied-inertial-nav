@@ -38,6 +38,16 @@ class LoadCaptureTest(unittest.TestCase):
         self.assertEqual(temp, [300, 302])
 
 
+class LoadCaptureWithMagTest(unittest.TestCase):
+    def test_reads_temp_from_capture_with_mag_columns(self):
+        csv = ("# accel offset (flash, counts): 1 2 3\n"
+               "seq,t_us,ax,ay,az,gx,gy,gz,temp,mx,my,mz,mstat\n"
+               "1,0,10,-20,16000,20,60,2,300,300,-100,-512,1\n")
+        _, accel, gyro, temp = load_capture(io.StringIO(csv))
+        self.assertEqual(accel[0], (10, -20, 16000))
+        self.assertEqual(temp, [300])
+
+
 class PoseFromNameTest(unittest.TestCase):
     def test_reads_axis_and_sign_from_file_name(self):
         self.assertEqual(pose_from_name("accel-6pos-xup-20261030.csv"), (0, 1))

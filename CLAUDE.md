@@ -108,9 +108,12 @@ hardware. See `firmware/lib/icm20948/` for the driver and
 Timer-interrupt-driven sampling is in place and verified on hardware
 (`firmware/src/main.cpp`): a hardware timer at 200 Hz timestamps each tick in
 its ISR and wakes a sampler task that does the I2C burst read; samples are
-queued and streamed over USB as CSV (`seq,t_us,ax,ay,az,gx,gy,gz,temp`; `temp`
-is the raw die temperature, read in the same burst, and is absent from
-captures before 2026-10-24). The IMU
+queued and streamed over USB as CSV
+(`seq,t_us,ax,ay,az,gx,gy,gz,temp,mx,my,mz,mstat`). `temp` is the raw die
+temperature and is absent from captures before 2026-10-24. `mx,my,mz` are
+raw AK09916 counts (0.15 uT/LSB) and `mstat` is `ST2 << 8 | ST1`; both are
+absent before 2026-10-30. All of it comes from one 23-byte burst read. The
+IMU
 runs at its full internal rate (~1.1 kHz, DLPF ~51 Hz) so each timer read gets
 fresh data. `analysis/capture_imu.py` captures the stream to `data/raw/` and
 reports missed samples and interval jitter. On connect it sends `i`; the
@@ -159,6 +162,27 @@ session (handling); temperature dependence of the offset is unchecked.
   Check each pose (and tilt < ~2 deg) with a live accel readout before
   capturing.
 
-Next: the
-magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
-over USB.
+Magnetometer (2026-10-30): AK09916 brought up through the ICM-20948's I2C
+master and streaming (WIA2 0x09, ~97 new readings/s at 100 Hz continuous).
+Setup and gotchas are in `docs/icm20948-register-map.md`. The firmware now
+does a full IMU reset at boot, because reflashing the ESP32 doesn't reset
+the IMU and old register state was leaking into new runs. At rest the field
+reads ~93 uT, above Earth's 25-65 uT, so expect a large hard-iron offset.
+Mag axes not yet checked against accel/gyro axes; not calibrated yet.
+
+Open issue: accel Z offset shifted by +180 counts (10.9 mg) on 2026-10-30,
+after the 6-position calibration. Z up now reads 1.0113 g and Z down 0.9895 g
+with the flash cal; re-fitting only the Z offset (-122.8 -> ~+56.8) gives
+1.0003 g for both, so it is an offset shift and the scale is unchanged. The
+flash value has NOT been updated. The shift appeared across a USB disconnect
+during which the board was moved and left untaped. Ruled out: mag on/off
+(A/B), firmware (old commit 71ae4eb reads the same), power cycling (no change
+across a replug), re-taping (didn't restore it). Best guess: mechanical stress
+on the breakout (cable pull), unconfirmed. Takeaways: the IMU needs a rigid,
+repeatable mount with the cable strain-relieved; calibrate on the final
+mount; and each run should start with a few seconds at rest, checking |g|
+is close to 1.000 so a shifted offset gets caught.
+
+Next: find the accel shift cause, check mag axis directions, then a mag
+calibration capture (ellipsoid fit, hard + soft iron). No SD card yet, so
+captures go over USB.

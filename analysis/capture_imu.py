@@ -17,7 +17,7 @@ import statistics
 import time
 
 SEQ_MODULUS = 2**32
-CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz,temp"
+CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz,temp,mx,my,mz,mstat"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 INFO_REQUEST = b"i"
 INFO_END = "# end info"
@@ -25,9 +25,10 @@ INFO_MAX_LINES = 400  # ~2 s of samples at 200 Hz
 
 
 def parse_sample_line(line):
-    """(seq, t_us, values) or None. Temp column is optional for old captures."""
+    """(seq, t_us, values) or None. Old captures lack temp (8 fields) or the
+    mag columns (9 fields); current ones have 13."""
     fields = line.strip().split(",")
-    if len(fields) not in (8, 9):
+    if len(fields) not in (8, 9, 13):
         return None
     try:
         values = [int(f) for f in fields]

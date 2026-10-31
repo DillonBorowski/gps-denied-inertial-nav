@@ -56,12 +56,18 @@ static void samplerLoop(void *) {
     s.tUs = tickTimeUs;
     portEXIT_CRITICAL(&tickMux);
 
-    imu.readAccelGyroTempRaw(s.raw);
+    imu.readSensorBlock(s.raw, s.magStatus);
     xQueueSend(sampleQueue, &s, 0);  // drop if full, seq shows the gap
   }
 }
 
+static const uint8_t AK09916_WIA2 = 0x01;
+static const uint8_t EXPECTED_MAG_WHO_AM_I = 0x09;
+
 static uint8_t whoAmI = 0;
+static uint8_t magWhoAmI = 0;
+static bool magReadOk = false;
+static bool magStarted = false;
 
 // Printed at boot and again whenever the host sends 'i', so a capture that
 // connects after boot can still record what the board is running.
@@ -69,6 +75,15 @@ static void printInfo() {
   Serial.printf("# WHO_AM_I = 0x%02X (expected 0x%02X) -- %s\n",
                 whoAmI, EXPECTED_WHO_AM_I,
                 whoAmI == EXPECTED_WHO_AM_I ? "PASS" : "FAIL");
+  if (magReadOk) {
+    Serial.printf("# AK09916 WIA2 = 0x%02X (expected 0x%02X) -- %s\n",
+                  magWhoAmI, EXPECTED_MAG_WHO_AM_I,
+                  magWhoAmI == EXPECTED_MAG_WHO_AM_I ? "PASS" : "FAIL");
+  } else {
+    Serial.println("# AK09916 WIA2 read failed (NACK or timeout) -- FAIL");
+  }
+  Serial.printf("# AK09916 continuous 100 Hz -- %s\n",
+                magStarted ? "PASS" : "FAIL");
   Serial.printf("# sampling at %lu Hz\n",
                 static_cast<unsigned long>(SAMPLE_RATE_HZ));
   Serial.printf("# gyro bias (flash, counts): %.2f %.2f %.2f\n",
@@ -92,11 +107,15 @@ void setup() {
 
   Wire.begin(PIN_SDA, PIN_SCL, I2C_CLOCK_HZ);
   imu.begin(Wire, ICM20948_ADDRESS);
+  imu.reset();
   whoAmI = imu.readWhoAmI();
 
   imu.wake();
   delay(50);  // clock settle, setup only
   imu.configureSampling();
+  imu.enableMagBus();
+  magReadOk = imu.readMagRegister(AK09916_WIA2, magWhoAmI);
+  magStarted = magReadOk && imu.startMag();
 
   sampleQueue = xQueueCreate(SAMPLE_QUEUE_LEN, sizeof(Sample));
   xTaskCreatePinnedToCore(samplerLoop, "imu_sampler", 4096, nullptr,
