@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <esp_timer.h>
+#include "AccelCal.h"
 #include "GyroBias.h"
 #include "ICM20948.h"
 #include "SampleFormat.h"
@@ -86,6 +87,12 @@ void setup() {
   Serial.printf("# gyro bias (flash, counts): %.2f %.2f %.2f\n",
                 GYRO_BIAS_COUNTS[0], GYRO_BIAS_COUNTS[1],
                 GYRO_BIAS_COUNTS[2]);
+  Serial.printf("# accel offset (flash, counts): %.1f %.1f %.1f\n",
+                ACCEL_OFFSET_COUNTS[0], ACCEL_OFFSET_COUNTS[1],
+                ACCEL_OFFSET_COUNTS[2]);
+  Serial.printf("# accel scale (flash, counts/g): %.1f %.1f %.1f\n",
+                ACCEL_SCALE_COUNTS_PER_G[0], ACCEL_SCALE_COUNTS_PER_G[1],
+                ACCEL_SCALE_COUNTS_PER_G[2]);
   Serial.println(SAMPLE_CSV_HEADER);
 
   sampleTimer = timerBegin(SAMPLE_TIMER_NUM, TIMER_DIVIDER, true);
