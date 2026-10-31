@@ -141,6 +141,20 @@ median, +/-0.5 s). Captures are in `data/calibration/`.
   segment later (fit offline from each run's own log) is still possible.
   Whatever is chosen, IMU-only and fused runs must use the same bias method.
 
-Next: 6-position accel, then the
+Accel 6-position (2026-10-30): `analysis/fit_accel_6pos.py` fits per-axis
+offset and scale from six 45 s stationary captures
+(`data/calibration/accel-6pos-{x,y,z}{up,down}-20261030.csv`, pose read from
+the file name and checked against the data). Result in
+`data/calibration/accel-6pos.json` and `firmware/lib/calibration/AccelCal.h`:
+offset x +4.4 / y -14.8 / z -7.5 mg, scale +0.20 / +0.23 / +0.41% vs nominal
+16384 counts/g. Corrected |g| is 1.0000-1.0005 across all six poses, so
+cross-axis misalignment looks small. Die temp rose 23.2 -> 26.6 C during the
+session (handling); temperature dependence of the offset is unchecked.
+- Setting poses: the IMU breakout has to be taped to a block with the Qwiic
+  cable taped down, or it tips onto an edge. Z points out of the chip side.
+  Check each pose (and tilt < ~2 deg) with a live accel readout before
+  capturing.
+
+Next: the
 magnetometer (AK09916, not yet brought up). No SD card yet, so captures go
 over USB.
