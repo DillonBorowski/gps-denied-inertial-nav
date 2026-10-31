@@ -4,8 +4,10 @@ Usage:
     python analysis/capture_imu.py --port COM3 --seconds 60
     python analysis/capture_imu.py --port COM3 --seconds 60 --out data/raw/still.csv
 
-Lines starting with '#' are firmware messages and are printed, not saved.
-Prints missed samples and interval stats at the end.
+On connect it asks the board for its info lines (rate, calibration in flash)
+and writes them as '#' lines at the top of the CSV. Other '#' lines from the
+firmware are printed, not saved. Prints missed samples and interval stats at
+the end.
 """
 
 import argparse
@@ -17,6 +19,9 @@ import time
 SEQ_MODULUS = 2**32
 CSV_HEADER = "seq,t_us,ax,ay,az,gx,gy,gz,temp"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+INFO_REQUEST = b"i"
+INFO_END = "# end info"
+INFO_MAX_LINES = 400  # ~2 s of samples at 200 Hz
 
 
 def parse_sample_line(line):
@@ -29,6 +34,22 @@ def parse_sample_line(line):
     except ValueError:
         return None
     return values[0], values[1], values[2:]
+
+
+def collect_info(readline, max_lines):
+    """'#' lines up to the end marker, or None if it never arrives
+    (old firmware, or readline timed out). Sample lines are skipped."""
+    info = []
+    for _ in range(max_lines):
+        line = readline()
+        if not line:
+            return None
+        line = line.strip()
+        if line == INFO_END:
+            return info
+        if line.startswith("#"):
+            info.append(line)
+    return None
 
 
 def summarize(seqs, times_us):
@@ -65,7 +86,18 @@ def capture(port, seconds, out_path):
     with serial.Serial(port, 115200, timeout=1) as ser, \
             open(out_path, "w", newline="") as out:
         ser.reset_input_buffer()
-        ser.readline()  # skip partial first line
+        ser.write(INFO_REQUEST)
+        info = collect_info(
+            lambda: ser.readline().decode("ascii", errors="replace"),
+            INFO_MAX_LINES)
+        if info is None:
+            print("# warning: no info from board (old firmware?), "
+                  "calibration not recorded")
+        else:
+            for line in info:
+                print(line)
+                out.write(line + "\n")
+        ser.readline()  # skip partial line
         out.write(CSV_HEADER + "\n")
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:

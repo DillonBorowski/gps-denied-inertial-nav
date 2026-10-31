@@ -113,7 +113,11 @@ is the raw die temperature, read in the same burst, and is absent from
 captures before 2026-10-24). The IMU
 runs at its full internal rate (~1.1 kHz, DLPF ~51 Hz) so each timer read gets
 fresh data. `analysis/capture_imu.py` captures the stream to `data/raw/` and
-reports missed samples and interval jitter. Verification run (60 s, board at
+reports missed samples and interval jitter. On connect it sends `i`; the
+firmware replies with info lines (WHO_AM_I, rate, gyro bias and accel cal in
+flash, uptime) ending in `# end info`, and the capture writes them as `#`
+lines at the top of the CSV (captures from 2026-10-30 on). Readers must skip
+`#` lines. Verification run (60 s, board at
 rest): 12000 samples, 0 missed, every interval exactly 5000 us. Note `t_us` is
 the timer-fire time, not the I2C read-completion time.
 

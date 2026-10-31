@@ -61,27 +61,14 @@ static void samplerLoop(void *) {
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-  while (!Serial) {}
-  delay(500);
+static uint8_t whoAmI = 0;
 
-  Wire.begin(PIN_SDA, PIN_SCL, I2C_CLOCK_HZ);
-  imu.begin(Wire, ICM20948_ADDRESS);
-
-  uint8_t whoAmI = imu.readWhoAmI();
+// Printed at boot and again whenever the host sends 'i', so a capture that
+// connects after boot can still record what the board is running.
+static void printInfo() {
   Serial.printf("# WHO_AM_I = 0x%02X (expected 0x%02X) -- %s\n",
                 whoAmI, EXPECTED_WHO_AM_I,
                 whoAmI == EXPECTED_WHO_AM_I ? "PASS" : "FAIL");
-
-  imu.wake();
-  delay(50);  // clock settle, setup only
-  imu.configureSampling();
-
-  sampleQueue = xQueueCreate(SAMPLE_QUEUE_LEN, sizeof(Sample));
-  xTaskCreatePinnedToCore(samplerLoop, "imu_sampler", 4096, nullptr,
-                          configMAX_PRIORITIES - 1, &samplerTask, 1);
-
   Serial.printf("# sampling at %lu Hz\n",
                 static_cast<unsigned long>(SAMPLE_RATE_HZ));
   Serial.printf("# gyro bias (flash, counts): %.2f %.2f %.2f\n",
@@ -93,6 +80,29 @@ void setup() {
   Serial.printf("# accel scale (flash, counts/g): %.1f %.1f %.1f\n",
                 ACCEL_SCALE_COUNTS_PER_G[0], ACCEL_SCALE_COUNTS_PER_G[1],
                 ACCEL_SCALE_COUNTS_PER_G[2]);
+  Serial.printf("# uptime %llu us\n",
+                static_cast<unsigned long long>(esp_timer_get_time()));
+  Serial.println("# end info");
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {}
+  delay(500);
+
+  Wire.begin(PIN_SDA, PIN_SCL, I2C_CLOCK_HZ);
+  imu.begin(Wire, ICM20948_ADDRESS);
+  whoAmI = imu.readWhoAmI();
+
+  imu.wake();
+  delay(50);  // clock settle, setup only
+  imu.configureSampling();
+
+  sampleQueue = xQueueCreate(SAMPLE_QUEUE_LEN, sizeof(Sample));
+  xTaskCreatePinnedToCore(samplerLoop, "imu_sampler", 4096, nullptr,
+                          configMAX_PRIORITIES - 1, &samplerTask, 1);
+
+  printInfo();
   Serial.println(SAMPLE_CSV_HEADER);
 
   sampleTimer = timerBegin(SAMPLE_TIMER_NUM, TIMER_DIVIDER, true);
@@ -102,8 +112,14 @@ void setup() {
 }
 
 void loop() {
+  while (Serial.available() > 0) {
+    if (Serial.read() == 'i') {
+      printInfo();
+    }
+  }
+
   Sample s;
-  if (xQueueReceive(sampleQueue, &s, portMAX_DELAY) == pdTRUE) {
+  if (xQueueReceive(sampleQueue, &s, pdMS_TO_TICKS(20)) == pdTRUE) {
     char line[SAMPLE_CSV_MAX_LEN];
     int n = formatSampleCsv(s, line, sizeof(line));
     Serial.write(reinterpret_cast<const uint8_t *>(line), n);

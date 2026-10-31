@@ -1,6 +1,6 @@
 import unittest
 
-from capture_imu import parse_sample_line, summarize
+from capture_imu import INFO_END, collect_info, parse_sample_line, summarize
 
 
 class ParseSampleLineTest(unittest.TestCase):
@@ -50,6 +50,29 @@ class SummarizeTest(unittest.TestCase):
         s = summarize([2**32 - 1, 0], [0, 5000])
         self.assertEqual(s["missed"], 0)
         self.assertEqual(s["dt_max_us"], 5000)
+
+
+def fake_readline(lines):
+    it = iter(lines)
+    return lambda: next(it, "")
+
+
+class CollectInfoTest(unittest.TestCase):
+    def test_keeps_comment_lines_up_to_end_marker(self):
+        lines = ["1,0,0,0,0,0,0,0,0\n", "# gyro bias: 1 2 3\n",
+                 "2,5000,0,0,0,0,0,0,0\n", "# accel offset: 4 5 6\n",
+                 INFO_END + "\n", "# later message\n"]
+        info = collect_info(fake_readline(lines), max_lines=100)
+        self.assertEqual(info, ["# gyro bias: 1 2 3", "# accel offset: 4 5 6"])
+
+    def test_returns_none_when_marker_never_comes(self):
+        # Old firmware ignores the request; readline times out with "".
+        lines = ["# WHO_AM_I = 0xEA\n", "1,0,0,0,0,0,0,0,0\n"]
+        self.assertIsNone(collect_info(fake_readline(lines), max_lines=100))
+
+    def test_gives_up_after_max_lines(self):
+        lines = ["1,0,0,0,0,0,0,0,0\n"] * 50 + [INFO_END + "\n"]
+        self.assertIsNone(collect_info(fake_readline(lines), max_lines=10))
 
 
 if __name__ == "__main__":
